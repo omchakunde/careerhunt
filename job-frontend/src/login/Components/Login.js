@@ -2,15 +2,10 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { useDispatch } from "react-redux";
 import { Form, Button, Col, Container, Row } from "react-bootstrap";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import Header from "./Header";
 import classes from "./Register.module.css";
-// import "./src/App.css";
 import Config from "../../config/Config.json";
-
-// const style = {
-//   backgroundColor: "rgb(235, 238, 240)",
-// };
 
 const Login = () => {
   const [inputs, setInputs] = useState({ email: "", password: "" });
@@ -19,94 +14,100 @@ const Login = () => {
     show: false,
     message: "",
   });
+
   const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   useEffect(() => {
     document.title = Config.TITLE.LOGIN;
   }, []);
 
   const handleChange = (event) => {
-    const name = event.target.name;
-    const value = event.target.value;
+    const { name, value } = event.target;
     setInputs((values) => ({ ...values, [name]: value }));
   };
 
   const handleSubmit = (event) => {
     event.preventDefault();
-    if (validate()) {
-      // console.log(inputs);
-      setBackendErrors({ show: false, message: "" });
-      axios
-        .post("http://localhost:8080/auth/login", inputs)
-        .then((res) => {
-          const token = res.data.token;
-          dispatch({
-            type: "SETAUTHTOKEN",
-            data: token,
-          });
-        })
-        .catch((err) => {
-          const statusCode = err.message.split(" ").pop();
-          if (statusCode === "401" ||statusCode ===  "422") {
-            // console.log(statusCode);
-            setBackendErrors({
-              show: true,
-              message: "Incorrect Email or Password",
-            });
-          } else {
-            setBackendErrors({
-              show: true,
-              message: "Some error...on our side...",
-            });
-          }
+
+    if (!validate()) return;
+
+    setBackendErrors({ show: false, message: "" });
+
+    axios
+      .post(`${Config.SERVER_URL}/auth/login`, inputs)
+      .then((res) => {
+        const token = res.data.token;
+
+        // ✅ store token
+        localStorage.setItem("token", token);
+
+        // ✅ redux
+        dispatch({
+          type: "SETAUTHTOKEN",
+          data: token,
         });
-    }
+
+        // ✅ redirect
+        navigate("/dashboard");
+      })
+      .catch((err) => {
+        const status = err.response?.status;
+
+        if (status === 401 || status === 422) {
+          setBackendErrors({
+            show: true,
+            message: "Incorrect Email or Password",
+          });
+        } else {
+          setBackendErrors({
+            show: true,
+            message: "Server error. Please try again later.",
+          });
+        }
+      });
   };
 
   const validate = () => {
     let isValid = true;
     let error = {};
 
-    if (!inputs["email"]) {
+    if (!inputs.email) {
       isValid = false;
-      error["email"] = "Please enter your email Address.";
+      error.email = "Please enter your email address.";
     }
 
-    if (typeof inputs["email"] !== "undefined") {
-      var pattern = new RegExp(
-        /^(("[\w-\s]+")|([\w-]+(?:\.[\w-]+)*)|("[\w-\s]+")([\w-]+(?:\.[\w-]+)*))(@((?:[\w-]+\.)*\w[\w-]{0,66})\.([a-z]{2,6}(?:\.[a-z]{2})?)$)|(@\[?((25[0-5]\.|2[0-4][0-9]\.|1[0-9]{2}\.|[0-9]{1,2}\.))((25[0-5]|2[0-4][0-9]|1[0-9]{2}|[0-9]{1,2})\.){2}(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[0-9]{1,2})\]?$)/i
-      );
-      if (!pattern.test(inputs["email"])) {
-        isValid = false;
-        error["email"] = "Please enter valid email address.";
-      }
-    }
-
-    if (!inputs["password"]) {
+    if (
+      inputs.email &&
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(inputs.email)
+    ) {
       isValid = false;
-      error["password"] = "Please enter your password.";
+      error.email = "Please enter a valid email address.";
     }
 
-    if (typeof inputs["password"] !== "undefined") {
-      if (inputs["password"].length < 6) {
-        isValid = false;
-        error["password"] = "Please add at least 6 character.";
-      }
+    if (!inputs.password) {
+      isValid = false;
+      error.password = "Please enter your password.";
+    }
+
+    if (inputs.password && inputs.password.length < 6) {
+      isValid = false;
+      error.password = "Password must be at least 6 characters.";
     }
 
     setErrors(error);
-
     return isValid;
   };
 
   return (
     <React.Fragment>
-      {/* <title>{Config.TITLE.APP_TITLE}</title> */}
       <Header />
-      <Container className="mb-5 ">
-        <h1 className="   p-3 text-center rounded" style={{ color: "#2c49ed" }}>
+
+      <Container className="mb-5">
+        <h1 className="p-3 text-center" style={{ color: "#2c49ed" }}>
           Login to your Job Portal
         </h1>
+
         <Row className="mb-5">
           <Col
             lg={5}
@@ -117,88 +118,52 @@ const Login = () => {
             {backendErrors.show && (
               <div className="login-error">{backendErrors.message}</div>
             )}
+
             <Form onSubmit={handleSubmit}>
-              <Form.Group className="mb-3" controlId="formBasicEmail">
+              <Form.Group className="mb-3">
                 <Form.Label>
-                  Email <span style={{ color: "red" }}> *</span>
+                  Email <span style={{ color: "red" }}>*</span>
                 </Form.Label>
                 <Form.Control
                   type="email"
                   name="email"
-                  placeholder="Enter email"
                   value={inputs.email}
                   onChange={handleChange}
                 />
-
-                <p style={{ color: "red" }}> {errors.email} </p>
+                <p style={{ color: "red" }}>{errors.email}</p>
               </Form.Group>
-              <Form.Group className="mb-3" controlId="formBasicPassword">
+
+              <Form.Group className="mb-3">
                 <Form.Label>
-                  Password <span style={{ color: "red" }}> *</span>
+                  Password <span style={{ color: "red" }}>*</span>
                 </Form.Label>
                 <Form.Control
                   type="password"
                   name="password"
-                  placeholder="Password"
                   value={inputs.password}
                   onChange={handleChange}
                 />
-                <p style={{ color: "red" }}> {errors.password} </p>
+                <p style={{ color: "red" }}>{errors.password}</p>
               </Form.Group>
-              {/* <Link to="/Dashboard"> */}
-              <div className="d-grid gap-2">
-                <Button
-                  // onClick={handleSubmit}
 
-                  variant="primary"
-                  size="lg"
-                  type="submit"
-                  className="mt-4 mb-2"
-                >
-                  Log-In
+              <div className="d-grid gap-2">
+                <Button type="submit" variant="primary" size="lg">
+                  Log In
                 </Button>
               </div>
-              {/* </Link> */}
 
-              <Col lg={5} md={6} sm={12}>
-                <Link style={{ textDecoration: "none" }} to="/Reset">
-                  {" "}
-                  Forgot Password?{" "}
-                </Link>
-              </Col>
-              <div>
-                <Row>
-                  <Col lg={5} md={6} sm={12} className="">
-                    <Form.Label className="mt-5">
-                      Don't have an account?{" "}
-                    </Form.Label>
-                  </Col>
-                  <Col
-                    lg={5}
-                    md={6}
-                    sm={12}
-                    className=" mt-5  d-flex justify-content-center"
-                  >
-                    <Link className="" to="/Register">
-                      <Button
-                        variant="success"
-                        // style={{ marginLeft: "200px" }}
-                        size="lg"
-                      >
-                        {" "}
-                        Sign-up{" "}
-                      </Button>
-                    </Link>
-                  </Col>
-                </Row>
-              </div>
+              <Row className="mt-4">
+                <Col>
+                  <Link to="/Register">
+                    <Button variant="success">Sign Up</Button>
+                  </Link>
+                </Col>
+              </Row>
             </Form>
           </Col>
         </Row>
       </Container>
     </React.Fragment>
-
-    // </div>
   );
 };
 

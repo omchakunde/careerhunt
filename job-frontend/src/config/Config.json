@@ -1,5 +1,5 @@
 {
-  "SERVER_URL": "https://job-hunt-3-jqng.onrender.com",
+  "SERVER_URL": "https://job-hunt-3-jqng.onrender.com/",
   "TITLE": {
     "APP_TITLE": "JOB HUNT",
     "LOGIN": "Login",
@@ -14,3 +14,4 @@
     "APPLIED_JOBS": "Applied Jobs"
   }
 }
+
