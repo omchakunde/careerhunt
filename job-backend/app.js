@@ -15,53 +15,65 @@ const userRoutes = require("./routes/user");
    APP INIT
 ======================= */
 const app = express();
-
-const MONGODB_URI = process.env.MONGODB_URI;
 const PORT = process.env.PORT || 5000;
 
 /* =======================
-   MIDDLEWARES
+   MIDDLEWARES (ORDER MATTERS)
 ======================= */
 
-// Parse JSON bodies
+// ✅ JSON parser
 app.use(express.json());
 
-// ✅ CORS (FIXED FOR VERCEL + LOCALHOST)
+// ✅ CORS — ALLOW VERCEL + LOCALHOST
 app.use(
   cors({
-    origin: [
-      "http://localhost:3000",
-      "https://job-hunt-frontend-mu.vercel.app"
-    ],
-    methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-    credentials: false
+    origin: (origin, callback) => {
+      const allowedOrigins = [
+        "http://localhost:3000",
+        "https://job-hunt-frontend-mu.vercel.app",
+      ];
+
+      // allow server-to-server / Postman / Render health checks
+      if (!origin) return callback(null, true);
+
+      if (allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("CORS not allowed"));
+      }
+    },
+    methods: "GET,POST,PUT,PATCH,DELETE,OPTIONS",
+    allowedHeaders: "Content-Type,Authorization",
   })
 );
 
-// ✅ Handle preflight requests
+// ✅ MUST be here for preflight
 app.options("*", cors());
+
+/* =======================
+   HEALTH CHECK (IMPORTANT)
+======================= */
+app.get("/health", (req, res) => {
+  res.status(200).json({ status: "OK" });
+});
 
 /* =======================
    ROUTES
 ======================= */
-
 app.use("/auth", authRoutes);
 app.use("/admin", adminRoutes);
 app.use("/provider", providerRoutes);
 app.use("/user", userRoutes);
 
 /* =======================
-   GLOBAL ERROR HANDLER
+   ERROR HANDLER
 ======================= */
-app.use((error, req, res, next) => {
-  const status = error.statusCode || 500;
-  const message = error.message || "Server Error";
-  const data = error.data;
+app.use((err, req, res, next) => {
+  console.error(err);
 
-  res.status(status).json({
-    message,
-    data,
+  res.status(err.statusCode || 500).json({
+    message: err.message || "Internal Server Error",
+    data: err.data || null,
   });
 });
 
@@ -69,13 +81,13 @@ app.use((error, req, res, next) => {
    DATABASE & SERVER
 ======================= */
 mongoose
-  .connect(MONGODB_URI)
+  .connect(process.env.MONGODB_URI)
   .then(() => {
-    console.log("✅ Connected to MongoDB");
-    app.listen(PORT, () => {
-      console.log(`🚀 Server running on port ${PORT}`);
-    });
+    console.log("✅ MongoDB connected");
+    app.listen(PORT, () =>
+      console.log(`🚀 Backend running on port ${PORT}`)
+    );
   })
   .catch((err) => {
-    console.error("❌ Database connection error:", err);
+    console.error("❌ MongoDB error:", err);
   });
