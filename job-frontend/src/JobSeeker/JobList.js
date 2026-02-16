@@ -1,13 +1,14 @@
-import React from "react";
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { Row, Col, Container } from "react-bootstrap";
 import axios from "axios";
-import Jobitem from "./Job_item";
+import Jobitem from "./Jobitem";
 import ApplyModal from "./ApplyModal";
+import UserStats from "./UserStats";   // ✅ ADDED
 import classes from "./Modalf.module.css";
 import Config from "../config/Config.json";
 
 let jobsData = [];
+
 const Jobs = () => {
   const [modal, setModal] = useState(false);
   const [action, setAction] = useState(false);
@@ -34,7 +35,7 @@ const Jobs = () => {
 
   useEffect(() => {
     axios
-      .get(`${Config.SERVER_URL + "user/jobsAvailable"}`, {
+      .get(`${Config.SERVER_URL}user/jobsAvailable`, {
         headers: {
           Authorization: "Bearer " + localStorage.getItem("token"),
         },
@@ -50,6 +51,10 @@ const Jobs = () => {
 
   return (
     <div>
+
+      {/* ✅ STEP 3 — USER STATS ADDED HERE */}
+      <UserStats />
+
       <Container>
         <Row style={{ marginTop: "20px", marginLeft: "85px" }}>
           <Col sm={3}></Col>
@@ -59,17 +64,23 @@ const Jobs = () => {
               type="search"
               onChange={jobSearchHandler}
               placeholder="Search Jobs"
-            ></input>
+            />
           </Col>
         </Row>
       </Container>
+
       <Container fluid>
         <div className={classes.grid}>
           {jobs.map((jobItem) => (
-            <Jobitem key={jobItem._id} item={jobItem} jobApply={jobApply} />
+            <Jobitem
+              key={jobItem._id}
+              item={jobItem}
+              jobApply={jobApply}
+            />
           ))}
         </div>
       </Container>
+
       {modal && (
         <ApplyModal
           job={jobSet}
@@ -78,6 +89,7 @@ const Jobs = () => {
           changes={setAction}
         />
       )}
+
     </div>
   );
 };

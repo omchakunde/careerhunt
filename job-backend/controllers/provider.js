@@ -5,340 +5,323 @@ const path = require("path");
 const Job = require("../models/job");
 const Applicant = require("../models/applicant");
 const User = require("../models/user");
+const Notification = require("../models/notification");
 
 const { clearResume } = require("../util/helper");
 
-exports.getStats = (req, res, next) => {
-  let jobsCount = 0;
-  let applicantsCount = 0;
-  Job.find({ providerId: req.userId })
-    .countDocuments()
-    .then((jobs) => {
-      jobsCount = jobs;
-      return Applicant.find({ providerId: req.userId }).countDocuments();
-    })
-    .then((applicants) => {
-      applicantsCount = applicants;
-      return res.status(200).json({
-        message: "Successfully fetched the stats",
-        stats: { jobsCount, applicantsCount },
-      });
-    })
-    .catch((err) => {
-      if (!err.statusCode) {
-        err.statusCode = 500;
-      }
-      next(err);
+/* ================= GET STATS ================= */
+exports.getStats = async (req, res, next) => {
+  try {
+    const jobsCount = await Job.countDocuments({
+      providerId: req.userId,
     });
-};
 
-exports.getRecents = (req, res, next) => {
-  Job.find({ providerId: req.userId })
-    .sort({ createdAt: -1 })
-    .limit(3)
-    .lean()
-    .then((jobs) => {
-      return res
-        .status(200)
-        .json({
-          message: "Successfully fetched the recent jobs",
-          recentJobs: jobs,
-        });
-    })
-    .catch((err) => {
-      if (!err.statusCode) {
-        err.statusCode = 500;
-      }
-      next(err);
+    const applicantsCount = await Applicant.countDocuments({
+      providerId: req.userId,
     });
-};
 
-exports.getJobs = (req, res, next) => {
-  Job.find({ providerId: req.userId })
-    .lean()
-    .then((jobs) => {
-      res.status(200).json({
-        message: "Fetched the list of jobs",
-        jobs: jobs,
-      });
-    })
-    .catch((err) => {
-      if (!err.statusCode) {
-        err.statusCode = 500;
-      }
-      next(err);
+    res.status(200).json({
+      message: "Successfully fetched the stats",
+      stats: { jobsCount, applicantsCount },
     });
-};
-
-exports.addJob = (req, res, next) => {
-  const errors = validationResult(req);
-
-  if (!errors.isEmpty()) {
-    const error = new Error("Validation failed");
-    error.statusCode = 422;
-    error.data = errors.array();
-    throw error;
+  } catch (err) {
+    next(err);
   }
-
-  const newJob = new Job({
-    ...req.body,
-    providerId: req.userId,
-  });
-  let jobId;
-  newJob
-    .save()
-    .then((job) => {
-      jobId = job._id;
-      return User.findById(req.userId);
-    })
-    .then((user) => {
-      user.jobsPosted.push(jobId);
-      return user.save();
-    })
-    .then((result) => {
-      res.status(201).json({ message: "Job Added Successfully" });
-    })
-    .catch((err) => {
-      if (!err.statusCode) {
-        err.statusCode = 500;
-      }
-      next(err);
-    });
 };
 
-exports.getJob = (req, res, next) => {
-  const jobId = req.params.jobId;
+/* ================= GET RECENT JOBS ================= */
+exports.getRecents = async (req, res, next) => {
+  try {
+    const jobs = await Job.find({ providerId: req.userId })
+      .sort({ createdAt: -1 })
+      .limit(3)
+      .lean();
 
-  Job.findOne({ _id: jobId, providerId: req.userId })
-    .lean()
-    .then((job) => {
-      if (!job) {
-        const error = new Error("Job not found");
-        error.statusCode = 404;
-        throw error;
-      }
-      res
-        .status(200)
-        .json({ message: "Fetched the job Successfully", job: job });
-    })
-    .catch((err) => {
-      if (!err.statusCode) {
-        err.statusCode = 500;
-      }
-      next(err);
+    res.status(200).json({
+      message: "Successfully fetched recent jobs",
+      recentJobs: jobs,
     });
-};
-
-exports.editJob = (req, res, next) => {
-  const jobId = req.params.jobId;
-  const errors = validationResult(req);
-
-  if (!errors.isEmpty()) {
-    const error = new Error("Validation failed");
-    error.statusCode = 422;
-    error.data = errors.array();
-    throw error;
+  } catch (err) {
+    next(err);
   }
-
-  Job.findOneAndUpdate({ _id: jobId, providerId: req.userId }, req.body, {
-    useFindAndModify: false,
-  })
-    .then((data) => {
-      if (!data) {
-        res.status(404).json({
-          message: `Cannot update job with id=${id}. Maybe job was not found!`,
-        });
-      } else res.status(200).json({ message: "Job was updated successfully." });
-    })
-    .catch((err) => {
-      if (!err.statusCode) {
-        err.statusCode = 500;
-      }
-      next(err);
-    });
 };
 
-exports.deleteJob = (req, res, next) => {
-  const jobId = req.params.jobId;
-  let resumes = [];
-  let applicants = [];
+/* ================= GET JOBS ================= */
+exports.getJobs = async (req, res, next) => {
+  try {
+    const jobs = await Job.find({
+      providerId: req.userId,
+    }).lean();
 
-  Job.findOneAndDelete({ _id: jobId, providerId: req.userId })
-    .then((data) => {
-      if (!data) {
-        const error = new Error("Cannot delete job. Job not found!");
-        error.statusCode = 404;
-        throw error;
-      }
-      return User.findOneAndUpdate(
-        { _id: req.userId },
-        { $pull: { jobsPosted: jobId } }
-      );
-    })
-    .then((result) => {
-      return Applicant.find({ jobId: jobId, providerId: req.userId }).then(
-        (docs) => {
-          docs.forEach((doc) => resumes.push(doc.resume));
-          docs.forEach((doc) => applicants.push(doc._id));
-        }
-      );
-    })
-    .then((result) => {
-      return Applicant.deleteMany({ _id: { $in: applicants } });
-    })
-    .then((result) => {
-      resumes.forEach((resume) => clearResume(resume));
-      res.json({
-        message: "Job record was deleted successfully!",
+    res.status(200).json({
+      message: "Fetched jobs successfully",
+      jobs,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/* ================= ADD JOB ================= */
+exports.addJob = async (req, res, next) => {
+  try {
+    const errors = validationResult(req);
+
+    if (!errors.isEmpty()) {
+      return res.status(422).json({
+        message: "Validation failed",
+        errors: errors.array(),
       });
-    })
-    .catch((err) => {
-      if (!err.statusCode) {
-        err.statusCode = 500;
-      }
-      next(err);
+    }
+
+    const newJob = new Job({
+      ...req.body,
+      providerId: req.userId,
+      companyLogo: req.file ? req.file.filename : null,
     });
+
+    const job = await newJob.save();
+
+    await User.findByIdAndUpdate(req.userId, {
+      $push: { jobsPosted: job._id },
+    });
+
+    res.status(201).json({
+      message: "Job added successfully",
+    });
+  } catch (err) {
+    next(err);
+  }
 };
 
-exports.getApplicantsForJob = (req, res, next) => {
-  const jobId = req.params.jobId;
-  const providerId = req.userId;
+/* ================= GET SINGLE JOB ================= */
+exports.getJob = async (req, res, next) => {
+  try {
+    const job = await Job.findOne({
+      _id: req.params.jobId,
+      providerId: req.userId,
+    }).lean();
 
-  Applicant.find({
-    providerId: providerId,
-    jobId: jobId,
-    status: { $regex: "Applied", $options: "i" },
-  })
-    .populate("userId", "name")
-    .lean()
-
-    .then((applicants) => {
-      if (!applicants) {
-        return res
-          .status(200)
-          .json({ message: "Looks like no one has applied yet!" });
-      }
-      return res.status(200).json({
-        message: "Successfully fetched the applicants",
-        applicants: applicants,
+    if (!job) {
+      return res.status(404).json({
+        message: "Job not found",
       });
-    })
-    .catch((err) => {
-      if (!err.statusCode) {
-        err.statusCode = 500;
-      }
-      next(err);
+    }
+
+    res.status(200).json({
+      message: "Job fetched successfully",
+      job,
     });
+  } catch (err) {
+    next(err);
+  }
 };
-exports.getShortlistsForJob = (req, res, next) => {
-  const jobId = req.params.jobId;
-  const providerId = req.userId;
 
-  Applicant.find({
-    providerId: providerId,
-    jobId: jobId,
-    status: { $regex: "Shortlisted", $options: "i" },
-  })
-    .populate("userId", "name email")
-    .lean()
+/* ================= EDIT JOB ================= */
+exports.editJob = async (req, res, next) => {
+  try {
+    const errors = validationResult(req);
 
-    .then((applicants) => {
-      if (!applicants) {
-        return res
-          .status(200)
-          .json({ message: "Looks like no one has been shortlisted yet!" });
-      }
-      return res.status(200).json({
-        message: "Successfully fetched the applicants",
-        shortlists: applicants,
+    if (!errors.isEmpty()) {
+      return res.status(422).json({
+        message: "Validation failed",
+        errors: errors.array(),
       });
-    })
-    .catch((err) => {
-      if (!err.statusCode) {
-        err.statusCode = 500;
-      }
-      next(err);
-    });
-};
+    }
 
-exports.getApplicantResume = (req, res, next) => {
-  const applicantId = req.params.applicantItemId;
-  Applicant.findOne({ _id: applicantId, providerId: req.userId })
-    .lean()
-    .then((applicant) => {
-      if (!applicant) {
-        return res.status(404).json({ message: "Applicant not found" });
-      }
-      const resumeFile = applicant.resume;
-      const resumePath = path.join(resumeFile);
-      fs.readFile(resumePath, (err, data) => {
-        if (err) {
-          return next(err);
-        }
-        res.setHeader("Content-type", "application/pdf");
-        res.send(data);
+    const updatedData = {
+      ...req.body,
+    };
+
+    if (req.file) {
+      updatedData.companyLogo = req.file.filename;
+    }
+
+    const updatedJob = await Job.findOneAndUpdate(
+      { _id: req.params.jobId, providerId: req.userId },
+      updatedData,
+      { new: true }
+    );
+
+    if (!updatedJob) {
+      return res.status(404).json({
+        message: "Job not found",
       });
-    })
-    .catch((err) => {
-      if (!err.statusCode) {
-        err.statusCode = 500;
-      }
-      next(err);
+    }
+
+    res.status(200).json({
+      message: "Job updated successfully",
     });
+  } catch (err) {
+    next(err);
+  }
 };
 
-exports.shortlistApplicant = (req, res, next) => {
-  const applicantItemId = req.params.applicantItemId;
-  Applicant.findById({ _id: applicantItemId })
-    .then((applicant) => {
-      if (!applicant) {
-        return res.status(401).json({ message: "Applicant not found" });
-      }
-      if (applicant.providerId.toString() !== req.userId.toString()) {
-        const error = new Error("You are unauthorized to do the action!");
-        error.statusCode = 401;
-        throw error;
-      }
-      if (applicant.status === "Shortlisted") {
-        return res.status(409).json({ message: "Already shortlisted!" });
-      }
-      applicant.status = "Shortlisted";
-      return applicant.save();
-    })
-    .then((result) => {
-      res.status(200).json({ message: "Shortlisted the candidate!" });
-    })
-    .catch((err) => {
-      // console.log(err);
-      next(err);
+/* ================= DELETE JOB ================= */
+exports.deleteJob = async (req, res, next) => {
+  try {
+    const job = await Job.findOneAndDelete({
+      _id: req.params.jobId,
+      providerId: req.userId,
     });
+
+    if (!job) {
+      return res.status(404).json({
+        message: "Job not found",
+      });
+    }
+
+    await User.findByIdAndUpdate(req.userId, {
+      $pull: { jobsPosted: req.params.jobId },
+    });
+
+    const applicants = await Applicant.find({
+      jobId: req.params.jobId,
+    });
+
+    applicants.forEach((app) => {
+      clearResume(app.resume);
+    });
+
+    await Applicant.deleteMany({
+      jobId: req.params.jobId,
+    });
+
+    res.status(200).json({
+      message: "Job deleted successfully",
+    });
+  } catch (err) {
+    next(err);
+  }
 };
 
-exports.rejectApplicant = (req, res, next) => {
-  const applicantItemId = req.params.applicantItemId;
+/* ================= GET APPLICANTS ================= */
+exports.getApplicantsForJob = async (req, res, next) => {
+  try {
+    const applicants = await Applicant.find({
+      providerId: req.userId,
+      jobId: req.params.jobId,
+      status: "Applied",
+    })
+      .populate("userId", "name email")
+      .lean();
 
-  Applicant.findById(applicantItemId)
-    .then((applicant) => {
-      if (!applicant) {
-        return res.status(404).json({ message: "Applicant not found!" });
-      }
-      if (req.userId.toString() !== applicant.providerId.toString()) {
-        const error = new Error("You are unauthorized to do the action!");
-        error.statusCode = 401;
-        throw error;
-      }
-      clearResume(applicant.resume);
-      return Applicant.findByIdAndDelete(applicantItemId);
-    })
-    .then((result) => {
-      return res
-        .status(200)
-        .json({ message: "Applicant rejected successfully!" });
-    })
-    .catch((err) => {
-      if (!err.statusCode) {
-        err.statusCode = 500;
-      }
-      next(err);
+    res.status(200).json({
+      applicants,
     });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/* ================= GET SHORTLISTED ================= */
+exports.getShortlistsForJob = async (req, res, next) => {
+  try {
+    const shortlists = await Applicant.find({
+      providerId: req.userId,
+      jobId: req.params.jobId,
+      status: "Shortlisted",
+    })
+      .populate("userId", "name email")
+      .lean();
+
+    res.status(200).json({
+      shortlists,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/* ================= VIEW RESUME ================= */
+exports.getApplicantResume = async (req, res, next) => {
+  try {
+    const applicant = await Applicant.findOne({
+      _id: req.params.applicantItemId,
+      providerId: req.userId,
+    });
+
+    if (!applicant) {
+      return res.status(404).json({
+        message: "Applicant not found",
+      });
+    }
+
+    const resumePath = path.join(applicant.resume);
+
+    res.setHeader("Content-Type", "application/pdf");
+    fs.createReadStream(resumePath).pipe(res);
+  } catch (err) {
+    next(err);
+  }
+};
+
+/* ================= SHORTLIST ================= */
+exports.shortlistApplicant = async (req, res, next) => {
+  try {
+    const applicant = await Applicant.findById(
+      req.params.applicantItemId
+    );
+
+    if (!applicant) {
+      return res.status(404).json({
+        message: "Applicant not found",
+      });
+    }
+
+    if (applicant.providerId.toString() !== req.userId.toString()) {
+      return res.status(401).json({
+        message: "Unauthorized",
+      });
+    }
+
+    applicant.status = "Shortlisted";
+    await applicant.save();
+
+    await Notification.create({
+      userId: applicant.userId,
+      message: "🎉 You have been shortlisted!",
+    });
+
+    res.status(200).json({
+      message: "Applicant shortlisted successfully",
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/* ================= REJECT ================= */
+exports.rejectApplicant = async (req, res, next) => {
+  try {
+    const applicant = await Applicant.findById(
+      req.params.applicantItemId
+    );
+
+    if (!applicant) {
+      return res.status(404).json({
+        message: "Applicant not found",
+      });
+    }
+
+    if (applicant.providerId.toString() !== req.userId.toString()) {
+      return res.status(401).json({
+        message: "Unauthorized",
+      });
+    }
+
+    applicant.status = "Rejected";
+    await applicant.save();
+
+    await Notification.create({
+      userId: applicant.userId,
+      message: "❌ Your application has been rejected.",
+    });
+
+    res.status(200).json({
+      message: "Applicant rejected successfully",
+    });
+  } catch (err) {
+    next(err);
+  }
 };

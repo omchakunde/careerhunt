@@ -6,6 +6,7 @@ import classes from "./AddJob.module.css";
 
 import { TextField, SelectInput } from "./FormTypes";
 import * as Yup from "yup";
+
 export default function AddJob(props) {
   let initialValues = {
     title: "",
@@ -13,6 +14,7 @@ export default function AddJob(props) {
     startDate: "",
     endDate: "",
     category: "",
+    companyLogo: null,   // ✅ ADDED
   };
 
   if (props.jobInfo) {
@@ -22,10 +24,11 @@ export default function AddJob(props) {
       startDate: props.jobInfo.startDate,
       endDate: props.jobInfo.endDate,
       category: props.jobInfo.category,
+      companyLogo: null,  // don't preload image file
     };
   }
 
-  const formSubmitHandler = (values, setSubmitting) => {
+  const formSubmitHandler = (values) => {
     props.onAdd(values);
   };
 
@@ -45,28 +48,23 @@ export default function AddJob(props) {
       <Formik
         initialValues={initialValues}
         validationSchema={validate}
-        onSubmit={(values, { setSubmitting }) => {
+        onSubmit={(values) => {
           const editedValues = { ...props.jobInfo, ...values };
-          // setTimeout(() => {
-          //   alert(JSON.stringify(editedValues, null, 2));
-          //   setSubmitting(false);
-          // props.onAdd();
-          // history.push("/dashboard");
-          // }, 400);
-          formSubmitHandler(editedValues, setSubmitting);
+          formSubmitHandler(editedValues);
         }}
       >
         {(formik) => (
-          // console.log(formik);
           <Form onSubmit={formik.handleSubmit}>
             <div>
               <TextField label="Title" name="title" type="text" />
+
               <TextField
-                label="Description "
+                label="Description"
                 name="description"
                 type="text-area"
               />
-              <SelectInput label="Category " name="category">
+
+              <SelectInput label="Category" name="category">
                 <option value="">Select</option>
                 <option value="Software Development">
                   Software Development
@@ -77,33 +75,52 @@ export default function AddJob(props) {
                 </option>
                 <option value="Front Desk">Front Desk</option>
               </SelectInput>
-              <TextField label="Start date " name="startDate" type="date" />
-              <TextField label="  End date " name="endDate" type="date" />
+
+              <TextField label="Start date" name="startDate" type="date" />
+              <TextField label="End date" name="endDate" type="date" />
+
+              {/* ✅ NEW FILE INPUT */}
+              <div style={{ marginTop: "10px" }}>
+                <label>Company Image</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(event) => {
+                    formik.setFieldValue(
+                      "companyLogo",
+                      event.currentTarget.files[0]
+                    );
+                  }}
+                  className="form-control"
+                />
+              </div>
             </div>
 
             {!props.jobInfo ? (
               <Button
                 className={classes.submitBtn}
                 type="submit"
-                // onClick={props.onAdd}
                 style={{
                   display: "flex",
                   justifyContent: "center",
-                  alignItem: "center",
+                  alignItems: "center",
+                  marginTop: "15px",
                 }}
               >
                 Add Job
               </Button>
             ) : (
-              <>
-                <div
-                  style={{ display: "flex", justifyContent: "space-between" }}
-                >
-                  <Button className={classes.submitBtn} type="submit">
-                    Edit Job
-                  </Button>
-                </div>
-              </>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  marginTop: "15px",
+                }}
+              >
+                <Button className={classes.submitBtn} type="submit">
+                  Edit Job
+                </Button>
+              </div>
             )}
           </Form>
         )}

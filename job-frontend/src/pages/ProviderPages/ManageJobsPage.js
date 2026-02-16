@@ -10,6 +10,7 @@ import AddJob from "../../Job Provider/Components/AddJob/AddJob";
 import Config from "../../config/Config.json";
 
 let jobId;
+
 export default function ManageJobsPage() {
   const [action, setAction] = useState(false);
   const [showSpinner, setSpinner] = useState(false);
@@ -20,22 +21,26 @@ export default function ManageJobsPage() {
     inititalValues: {},
   });
   const [showDeleteModal, setDeleteModal] = useState(false);
-  const editJobHandler = (jobData) => {
-    setEditJobModal({ show: true, inititalValues: jobData });
-  };
 
   const token = localStorage.getItem("token");
 
   useEffect(() => {
     document.title = Config.TITLE.MANAGE_JOBS;
   }, []);
+
+  const editJobHandler = (jobData) => {
+    setEditJobModal({ show: true, inititalValues: jobData });
+  };
+
   const deleteModalHandler = (jId) => {
     jobId = jId;
     setDeleteModal(true);
   };
+
   const deleteItemHandler = () => {
     setDeleteModal(false);
     setSpinner(true);
+
     axios
       .delete(`${Config.SERVER_URL + "provider/jobs/" + jobId}`, {
         headers: {
@@ -47,99 +52,119 @@ export default function ManageJobsPage() {
         setAction(!action);
         toast.success(result.data.message);
       })
-      .catch((err) => {
-        // console.log(err);
+      .catch(() => {
         setSpinner(false);
         toast.error("Oops something went wrong");
       });
   };
+
+  // ✅ UPDATED ADD JOB WITH IMAGE SUPPORT
   const addJobHandler = (values) => {
     setSpinner(true);
+
+    const formData = new FormData();
+
+    formData.append("title", values.title);
+    formData.append("description", values.description);
+    formData.append("startDate", values.startDate);
+    formData.append("endDate", values.endDate);
+    formData.append("category", values.category);
+
+    // 🔥 image field
+    if (values.companyLogo) {
+      formData.append("companyLogo", values.companyLogo);
+    }
 
     axios
       .post(
         `${Config.SERVER_URL + "provider/add-job"}`,
-        { ...values },
+        formData,
         {
           headers: {
             Authorization: "Bearer " + token,
+            "Content-Type": "multipart/form-data",
           },
         }
       )
       .then((result) => {
-        // console.log(result);
         setAction(!action);
         setSpinner(false);
         setAddJobModal(false);
         toast.success(result.data.message);
       })
-      .catch((err) => {
-        // console.log(err);
+      .catch(() => {
         setSpinner(false);
         toast.error("Oops something went wrong");
       });
   };
+
+  // Optional: Update edit job to support image also
   const editJobItemHandler = (values) => {
     const j_id = values._id;
-    const updatedValues = {
-      jobId: values.jobId,
-      title: values.title,
-      description: values.description,
-      category: values.category,
-      endDate: values.endDate,
-      providerId: values.providerId,
-      startDate: values.startDate,
-    };
     setSpinner(true);
+
+    const formData = new FormData();
+    formData.append("title", values.title);
+    formData.append("description", values.description);
+    formData.append("startDate", values.startDate);
+    formData.append("endDate", values.endDate);
+    formData.append("category", values.category);
+
+    if (values.companyLogo) {
+      formData.append("companyLogo", values.companyLogo);
+    }
 
     axios
       .put(
         `${Config.SERVER_URL + "provider/edit-job/" + j_id}`,
-        updatedValues,
+        formData,
         {
           headers: {
             Authorization: "Bearer " + token,
+            "Content-Type": "multipart/form-data",
           },
         }
       )
       .then((result) => {
-        // console.log(result);
         setAction(!action);
         setSpinner(false);
-        setEditJobModal((prev) => {
-          return { show: false, inititalValues: prev.inititalValues };
-        });
+        setEditJobModal((prev) => ({
+          show: false,
+          inititalValues: prev.inititalValues,
+        }));
         toast.success(result.data.message);
       })
-      .catch((err) => {
-        // console.log(err);
+      .catch(() => {
         setSpinner(false);
         toast.error("Oops something went wrong");
       });
   };
+
   return (
     <>
       <Suspense fallback={<SpinnerComponent />}>
-        {/* EDIT MODAL */}
         {showSpinner && <SpinnerComponent />}
+
+        {/* ADD JOB MODAL */}
         <ReactModal
           show={showAddJobModal}
-          onHide={() => {
-            setAddJobModal(false);
-          }}
+          onHide={() => setAddJobModal(false)}
         >
           {{
             title: "Add new Job",
             body: <AddJob onAdd={addJobHandler} />,
           }}
         </ReactModal>
+
+        {/* EDIT JOB MODAL */}
         <ReactModal
           show={showEditJobModal.show}
-          onHide={() => {
-            setEditJobModal((prev) => {
-              return { show: false, inititalValues: prev.inititalValues };
-            });
-          }}
+          onHide={() =>
+            setEditJobModal((prev) => ({
+              show: false,
+              inititalValues: prev.inititalValues,
+            }))
+          }
         >
           {{
             title: "Edit the Job",
@@ -152,14 +177,13 @@ export default function ManageJobsPage() {
           }}
         </ReactModal>
       </Suspense>
+
       {/* DELETE MODAL */}
       <ReactModal
         show={showDeleteModal}
         isDelete={true}
         onOk={deleteItemHandler}
-        onHide={() => {
-          setDeleteModal(false);
-        }}
+        onHide={() => setDeleteModal(false)}
       >
         {{ title: "Delete Job", body: <h1>Are you sure?</h1> }}
       </ReactModal>
@@ -170,17 +194,8 @@ export default function ManageJobsPage() {
         onShowDelete={deleteModalHandler}
         changes={action}
       />
-      <ToastContainer
-        position="top-right"
-        autoClose={3000}
-        hideProgressBar={false}
-        newestOnTop={false}
-        closeOnClick
-        rtl={false}
-        pauseOnFocusLoss
-        draggable
-        pauseOnHover
-      />
+
+      <ToastContainer position="top-right" autoClose={3000} />
     </>
   );
 }

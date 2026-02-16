@@ -29,6 +29,11 @@ const jobSchema = new Schema(
       ref: "User",
       required: true,
     },
+    companyLogo: {
+  type: String,
+  required: false
+},
+
   },
   { timestamps: true }
 );

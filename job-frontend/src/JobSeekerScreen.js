@@ -1,25 +1,32 @@
+import React from "react";
+import { Routes, Route, Navigate } from "react-router-dom";
+
+import Navigation from "./components/navigation/Navigation";
 import JobSeekerPage from "./pages/SeekerPages/JobSeekerPage";
 import AppliedJobsPage from "./pages/SeekerPages/AppliedJobsPage";
-import { Routes, Route, Navigate } from "react-router-dom";
+import SavedJobs from "./JobSeeker/SavedJobs";
 import Changepassword from "./components/UI/ChangePassword";
-import Navigation from "./components/navigation/Navigation";
-import React from "react";
 
 export default function JobSeekerScreen() {
   return (
-    <React.Fragment>
+    <>
       <Navigation />
+
       <div style={{ width: "100%", marginTop: "100px" }}>
         <Routes>
-          <Route path="/" element={<Navigate replace to="/dashboard" />} />
+          {/* Default redirect */}
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
+          {/* User Routes */}
           <Route path="/dashboard" element={<JobSeekerPage />} />
           <Route path="/appliedJobs" element={<AppliedJobsPage />} />
+          <Route path="/saved-jobs" element={<SavedJobs />} />
           <Route path="/change-password" element={<Changepassword />} />
 
-          {/* </Route> */}
+          {/* Catch unknown routes */}
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </div>
-    </React.Fragment>
+    </>
   );
 }

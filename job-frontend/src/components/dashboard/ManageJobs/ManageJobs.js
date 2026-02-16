@@ -16,7 +16,6 @@ let jobId;
 export default function ManageJobs() {
   const [showAddJobModal, setAddJobModal] = useState(false);
   const [action, setAction] = useState(false);
-
   const [showSpinner, setSpinner] = useState(false);
   const [showEditJobModal, setEditJobModal] = useState({
     show: false,
@@ -26,25 +25,35 @@ export default function ManageJobs() {
 
   const token = localStorage.getItem("token");
 
+  // 🔥 FIXED ADD JOB WITH IMAGE + CORRECT ROUTE
   const addJobHander = (values) => {
-    // console.log(values);
     setSpinner(true);
 
+    const formData = new FormData();
+
+    formData.append("title", values.title);
+    formData.append("description", values.description);
+    formData.append("category", values.category);
+    formData.append("startDate", values.startDate);
+    formData.append("endDate", values.endDate);
+
+    if (values.companyLogo) {
+      formData.append("companyLogo", values.companyLogo);
+    }
+
     axios
-      .post(`${Config.SERVER_URL + "admin/add-job"}`, values, {
+      .post(`${Config.SERVER_URL + "provider/add-job"}`, formData, {
         headers: {
           Authorization: "Bearer " + token,
         },
       })
       .then((res) => {
-        // console.log(res);
         setSpinner(false);
         setAction(!action);
         setAddJobModal(false);
         toast.success(res.data.message);
       })
-      .catch((err) => {
-        // console.log(err);
+      .catch(() => {
         setSpinner(false);
         toast.error("Oops something went wrong");
       });
@@ -54,36 +63,39 @@ export default function ManageJobs() {
     setEditJobModal({ show: true, inititalValues: jobData });
   };
 
+  // 🔥 FIXED EDIT WITH IMAGE SUPPORT + CORRECT ROUTE
   const editJobItemHandler = (values) => {
     const jobId = values._id;
-    const editValues = {
-      title: values.title,
-      description: values.description,
-      category: values.category,
-      startDate: values.startDate,
-      endDate: values.endDate,
-    };
-    // console.log(editValues);
     setSpinner(true);
 
+    const formData = new FormData();
+
+    formData.append("title", values.title);
+    formData.append("description", values.description);
+    formData.append("category", values.category);
+    formData.append("startDate", values.startDate);
+    formData.append("endDate", values.endDate);
+
+    if (values.companyLogo) {
+      formData.append("companyLogo", values.companyLogo);
+    }
+
     axios
-      .put(`${Config.SERVER_URL + "admin/edit-job/" + jobId}`, editValues, {
+      .put(`${Config.SERVER_URL + "provider/edit-job/" + jobId}`, formData, {
         headers: {
           Authorization: "Bearer " + token,
         },
       })
       .then((res) => {
-        setEditJobModal((prev) => {
-          return { show: false, inititalValues: prev.inititalValues };
-        });
-
+        setEditJobModal((prev) => ({
+          show: false,
+          inititalValues: prev.inititalValues,
+        }));
         setSpinner(false);
-
         setAction(!action);
         toast.success(res.data.message);
       })
-      .catch((err) => {
-        // console.log(err);
+      .catch(() => {
         setSpinner(false);
         toast.error("Oops something went wrong");
       });
@@ -97,8 +109,9 @@ export default function ManageJobs() {
   const deleteJobHandler = () => {
     setDeleteModal(false);
     setSpinner(true);
+
     axios
-      .delete(`${Config.SERVER_URL + "admin/jobs/" + jobId}`, {
+      .delete(`${Config.SERVER_URL + "provider/jobs/" + jobId}`, {
         headers: {
           Authorization: "Bearer " + token,
         },
@@ -108,26 +121,23 @@ export default function ManageJobs() {
         setSpinner(false);
         toast.success(result.data.message);
       })
-      .catch((err) => {
-        // console.log(err);
+      .catch(() => {
         setSpinner(false);
         toast.error("Oops something went wrong");
       });
   };
+
   return (
     <>
-      {/* EDIT MODAL */}
-
       {showSpinner && (
         <Container className={classes.overlaySpinner}>
           <SpinnerComponent />
         </Container>
       )}
+
       <ReactModal
         show={showAddJobModal}
-        onHide={() => {
-          setAddJobModal(false);
-        }}
+        onHide={() => setAddJobModal(false)}
         formModal={true}
         buttonTitle="Add Job"
         formId="manageJob-form"
@@ -137,13 +147,15 @@ export default function ManageJobs() {
           body: <AddJob onAdd={addJobHander} />,
         }}
       </ReactModal>
+
       <ReactModal
         show={showEditJobModal.show}
-        onHide={() => {
-          setEditJobModal((prev) => {
-            return { show: false, inititalValues: prev.inititalValues };
-          });
-        }}
+        onHide={() =>
+          setEditJobModal((prev) => ({
+            show: false,
+            inititalValues: prev.inititalValues,
+          }))
+        }
         formModal={true}
         buttonTitle="Edit Job"
         formId="manageJob-form"
@@ -158,14 +170,12 @@ export default function ManageJobs() {
           ),
         }}
       </ReactModal>
-      {/* DELETE MODAL */}
+
       <ReactModal
         show={showDeleteModal}
         isDelete={true}
         onOk={deleteJobHandler}
-        onHide={() => {
-          setDeleteModal(false);
-        }}
+        onHide={() => setDeleteModal(false)}
       >
         {{ title: "Delete Job", body: <h1>Are you sure?</h1> }}
       </ReactModal>
@@ -176,17 +186,8 @@ export default function ManageJobs() {
         onShowDelete={deleteModalHandler}
         changes={action}
       />
-      <ToastContainer
-        position="top-right"
-        autoClose={3000}
-        hideProgressBar={false}
-        newestOnTop={false}
-        closeOnClick
-        rtl={false}
-        pauseOnFocusLoss
-        draggable
-        pauseOnHover
-      />
+
+      <ToastContainer position="top-right" autoClose={3000} />
     </>
   );
 }

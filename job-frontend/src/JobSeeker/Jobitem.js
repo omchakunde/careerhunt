@@ -1,47 +1,66 @@
-import { Card, Col } from "react-bootstrap";
+import { Card } from "react-bootstrap";
 import classes from "./Modalf.module.css";
 
 function Jobitem({ item, jobApply }) {
+
   const jobApplyHandler = () => {
-    jobApply(item);
-    console.log(item.job);
+    if (jobApply) {
+      jobApply(item);
+    }
   };
+
   return (
-    <div class="grid grid-col-4 gap-4">
-      <Card
-        // style={{ height: "375px", width: "15rem", marginTop: "45px" }}
-        className={classes.cardstyle}
-      >
+    <div className="grid grid-col-4 gap-4">
+      <Card className={classes.cardstyle}>
         <Card.Body>
+
           <div className={classes.imgstyle}>
             <img
-              src="https://source.unsplash.com/random/200x100?html"
-              alt={item.job}
+              src={
+                item.companyLogo
+                  ? `http://localhost:8080/uploads/${item.companyLogo}`
+                  : "https://source.unsplash.com/random/200x100?office"
+              }
+              alt={item.title}
+              style={{
+                width: "100%",
+                height: "120px",
+                objectFit: "cover",
+                borderRadius: "5px"
+              }}
             />
           </div>
+
           <Card.Title>{item.title}</Card.Title>
-          <Card.Title>
-            <div className={classes.style}>{item.description}</div>
-          </Card.Title>
+
+          <Card.Text>
+            <div className={classes.style}>
+              {item.description}
+            </div>
+          </Card.Text>
 
           <div className={classes.badge}>
-            <span class="badge bg-primary">Full time</span>
-            <span class="badge bg-primary" style={{ marginLeft: "13px" }}>
+            <span className="badge bg-primary">Full time</span>
+            <span className="badge bg-primary" style={{ marginLeft: "13px" }}>
               Min.1 Year
             </span>
-            <span class="badge bg-primary" style={{ marginLeft: "10px" }}>
+            <span className="badge bg-primary" style={{ marginLeft: "10px" }}>
               Senior Level
             </span>
           </div>
 
-          <button
-            type="button"
-            style={{ marginTop: "30px", paddingBottom: "10px" }}
-            onClick={jobApplyHandler}
-            className="btn btn-primary"
-          >
-            Apply Now
-          </button>
+          {/* Only show Apply button if jobApply exists */}
+          {jobApply && (
+            <button
+              type="button"
+              style={{ marginTop: "30px", paddingBottom: "10px" }}
+              onClick={jobApplyHandler}
+              className="btn btn-primary"
+            >
+              Apply Now
+            </button>
+          )}
+
         </Card.Body>
       </Card>
     </div>

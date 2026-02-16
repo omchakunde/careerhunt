@@ -6,6 +6,8 @@ const providerController = require("../controllers/provider");
 const isAuthenticated = require("../middleware/is-authenticated");
 const { isAuthorized, isProvider } = require("../middleware/is-authorized");
 
+const upload = require("../middleware/upload");   // ✅ ADDED
+
 const router = express.Router();
 
 // job routes
@@ -34,11 +36,13 @@ router.get(
   providerController.getJobs
 );
 
+// ✅ UPDATED ROUTE WITH MULTER
 router.post(
   "/add-job",
   isAuthenticated,
   isAuthorized,
   isProvider,
+  upload.single("companyLogo"),   // 🔥 THIS IS IMPORTANT
   [
     body("title").trim().not().isEmpty(),
     body("description").trim().not().isEmpty(),
@@ -62,6 +66,7 @@ router.put(
   isAuthenticated,
   isAuthorized,
   isProvider,
+  upload.single("companyLogo"),   // ✅ Optional but recommended for editing
   [
     body("title").trim().not().isEmpty(),
     body("description").trim().not().isEmpty(),
@@ -111,6 +116,7 @@ router.patch(
   isProvider,
   providerController.shortlistApplicant
 );
+
 router.patch(
   "/applicants/reject/:applicantItemId",
   isAuthenticated,

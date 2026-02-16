@@ -2,7 +2,7 @@ import React from "react";
 import { useState, useEffect, useRef } from "react";
 import { Row, Col, Container } from "react-bootstrap";
 import axios from "axios";
-import Jobitem from "./Job_item";
+import Jobitem from "./Jobitem";
 import classes from "./Modalf.module.css";
 import Config from "../config/Config.json";
 

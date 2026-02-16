@@ -1,3 +1,38 @@
-.content {
-  margin-top: 100px;
+.nav {
+  background: linear-gradient(135deg, #1e3c72, #2a5298);
+  padding: 12px 20px;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+}
+
+.brand {
+  font-size: 22px;
+  font-weight: 600;
+  color: white;
+}
+
+.pageLinks a {
+  color: white;
+  margin-right: 20px;
+  font-weight: 500;
+  transition: 0.3s;
+}
+
+.pageLinks a:hover {
+  opacity: 0.8;
+}
+
+.active {
+  border-bottom: 2px solid white;
+}
+
+.user {
+  background: white;
+  color: #2a5298;
+  border-radius: 30px;
+  padding: 6px 14px;
+  font-weight: 500;
+}
+
+.dropDown {
+  margin-left: 15px;
 }

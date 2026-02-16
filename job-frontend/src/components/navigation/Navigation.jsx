@@ -1,24 +1,82 @@
-import React from "react";
-
+import React, { useEffect, useState } from "react";
 import { Link, useNavigate, NavLink } from "react-router-dom";
 import classes from "./Navigation.module.css";
-import { Navbar, Container, Nav, Dropdown } from "react-bootstrap";
+import { Navbar, Container, Nav, Dropdown, Badge } from "react-bootstrap";
 import { useDispatch } from "react-redux";
 import jwtDecode from "jwt-decode";
+import axios from "axios";
+import { FaBell } from "react-icons/fa";
+import Config from "../../config/Config.json";
 
 const Navigation = () => {
-  // const selectauthToken = (rootstate) => rootstate.authToken;
-  // const authToken = useSelector(selectauthToken);
-  // console.log(authToken);
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
   const authToken = localStorage.getItem("token");
-  const redAuthToken = jwtDecode(authToken);
+
+  // ✅ Safe decode
+  let redAuthToken = null;
+  if (authToken) {
+    try {
+      redAuthToken = jwtDecode(authToken);
+    } catch (err) {
+      console.log("Invalid token");
+    }
+  }
+
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   const logoutHandler = () => {
+    localStorage.removeItem("token");
     dispatch({ type: "CLEARAUTHTOKEN" });
     navigate("/", { replace: true });
+  };
+
+  /* =========================
+     FETCH NOTIFICATIONS
+  ========================= */
+  useEffect(() => {
+    if (!authToken || !redAuthToken || redAuthToken.role !== "User") return;
+
+    axios
+      .get(`${Config.SERVER_URL}user/notifications`, {
+        headers: {
+          Authorization: "Bearer " + authToken,
+        },
+      })
+      .then((res) => {
+        setNotifications(res.data.notifications || []);
+        const unread =
+          res.data.notifications?.filter((n) => !n.isRead).length || 0;
+        setUnreadCount(unread);
+      })
+      .catch((err) => console.log(err));
+  }, [authToken]); // ✅ Correct dependency
+
+  /* =========================
+     MARK AS READ
+  ========================= */
+  const markAsRead = (id) => {
+    axios
+      .put(
+        `${Config.SERVER_URL}user/notifications/${id}`,
+        {},
+        {
+          headers: {
+            Authorization: "Bearer " + authToken,
+          },
+        }
+      )
+      .then(() => {
+        setNotifications((prev) =>
+          prev.map((n) =>
+            n._id === id ? { ...n, isRead: true } : n
+          )
+        );
+        setUnreadCount((prev) => (prev > 0 ? prev - 1 : 0));
+      })
+      .catch((err) => console.log(err));
   };
 
   return (
@@ -30,160 +88,126 @@ const Navigation = () => {
       className={classes.nav}
     >
       <Container fluid>
-        {/* <Navbar.Brand href="/dashboard" className={classes.brand}>
-          Job Hunt
-        </Navbar.Brand> */}
-
-        <NavLink
-          // activeClassName={classes.active}
-          className={classes.brand}
-          to="/dashboard"
-        >
-          <span className={classes.logo}>
-            <i className="bi bi-search"></i>
-          </span>
+        <NavLink className={classes.brand} to="/dashboard">
           Career Hunt
         </NavLink>
-        <Navbar.Toggle aria-controls="navbar-dark-example" />
-        <Navbar.Collapse id="navbar-dark-example">
-          {redAuthToken.role === "Admin" && (
+
+        <Navbar.Toggle />
+        <Navbar.Collapse>
+
+          {/* ================= USER NAV ================= */}
+          {redAuthToken?.role === "User" && (
             <Nav className={`me-auto ${classes.pageLinks}`}>
               <NavLink
-                className={(navData) =>
-                  navData.isActive ? classes.active : ""
-                }
-                to="/manage-users"
-              >
-                Users
-              </NavLink>
-              <NavLink
-                className={(navData) =>
-                  navData.isActive ? classes.active : ""
-                }
-                to="/manage-jobs"
-              >
-                Jobs
-              </NavLink>
-              <NavLink
-                className={(navData) =>
-                  navData.isActive ? classes.active : ""
-                }
-                to="/reports"
-              >
-                Reports
-              </NavLink>
-            </Nav>
-          )}
-          {redAuthToken.role === "Job Provider" && (
-            <Nav className={`me-auto ${classes.pageLinks}`}>
-              <NavLink
-                className={(navData) =>
-                  navData.isActive ? classes.active : ""
-                }
-                to="/manage-applicants"
-              >
-                Applicant
-              </NavLink>
-              <NavLink
-                className={(navData) =>
-                  navData.isActive ? classes.active : ""
-                }
-                to="/manage-jobs"
-              >
-                Jobs
-              </NavLink>
-              <NavLink
-                className={(navData) =>
-                  navData.isActive ? classes.active : ""
-                }
-                to="/provider-report"
-              >
-                Reports
-              </NavLink>
-            </Nav>
-          )}
-          {redAuthToken.role === "User" && (
-            <Nav className={`me-auto ${classes.pageLinks}`}>
-              <NavLink
-                className={(navData) =>
-                  navData.isActive ? classes.active : ""
+                className={({ isActive }) =>
+                  isActive ? classes.active : ""
                 }
                 to="/dashboard"
               >
                 Apply
               </NavLink>
+
               <NavLink
-                className={(navData) =>
-                  navData.isActive ? classes.active : ""
+                className={({ isActive }) =>
+                  isActive ? classes.active : ""
                 }
                 to="/appliedJobs"
               >
                 Applied Jobs
               </NavLink>
-              {/* <NavLink
-                className={(navData) =>
-                  navData.isActive ? classes.active : ""
+
+              <NavLink
+                className={({ isActive }) =>
+                  isActive ? classes.active : ""
                 }
-                to="/ProviderReport"
-                onClick={(event) => event.preventDefault()}
+                to="/saved-jobs"
               >
-                Reports
-              </NavLink> */}
+                Saved Jobs
+              </NavLink>
             </Nav>
           )}
-          <Nav>
-            {/* <NavDropdown
-              id="nav-dropdown-dark-example"
-              title={
-                <span className={classes.username}>
-                  <span className={classes.userLogo}>
-                    <i className="bi bi-person-circle"></i>
-                  </span>
-                  {authToken.username}
-                </span>
-              }
-              menuVariant="light"
-              align="end"
-              className={classes.user}
-              as={"button"}
-            >
-              <NavDropdown.Item>
-                <NavLink
-                  className={classes.changePassword}
-                  to="/change-password"
-                >
-                  Change Password
-                </NavLink>
-              </NavDropdown.Item>
-              <NavDropdown.Divider />
 
-              <Dropdown.Item href="/login">Logout</Dropdown.Item>
-            </NavDropdown>
-          </Nav> */}
-            <Dropdown align={"end"} className={classes.dropDown}>
-              <Dropdown.Toggle className={classes.user}>
-                <span className={classes.username}>
-                  <span className={classes.userLogo}>
-                    <i className="bi bi-person-circle"></i>
-                  </span>
+          <Nav className="align-items-center">
+
+            {/* 🔔 NOTIFICATION BELL */}
+            {redAuthToken?.role === "User" && (
+              <Dropdown align="end" className="me-3">
+                <Dropdown.Toggle
+                  variant="light"
+                  style={{ position: "relative" }}
+                >
+                  <FaBell size={18} />
+
+                  {unreadCount > 0 && (
+                    <Badge
+                      bg="danger"
+                      pill
+                      style={{
+                        position: "absolute",
+                        top: "-5px",
+                        right: "-8px",
+                        fontSize: "10px"
+                      }}
+                    >
+                      {unreadCount}
+                    </Badge>
+                  )}
+                </Dropdown.Toggle>
+
+                <Dropdown.Menu style={{ width: "300px" }}>
+                  {notifications.length === 0 && (
+                    <Dropdown.Item disabled>
+                      No notifications
+                    </Dropdown.Item>
+                  )}
+
+                  {notifications.map((note) => (
+                    <Dropdown.Item
+                      key={note._id}
+                      onClick={() => markAsRead(note._id)}
+                      style={{
+                        backgroundColor: note.isRead
+                          ? "white"
+                          : "#f0f8ff",
+                        fontWeight: note.isRead
+                          ? "normal"
+                          : "bold"
+                      }}
+                    >
+                      {note.message}
+                    </Dropdown.Item>
+                  ))}
+                </Dropdown.Menu>
+              </Dropdown>
+            )}
+
+            {/* PROFILE DROPDOWN */}
+            {redAuthToken && (
+              <Dropdown align="end" className={classes.dropDown}>
+                <Dropdown.Toggle className={classes.user}>
                   {redAuthToken.userName}
-                </span>
-              </Dropdown.Toggle>
+                </Dropdown.Toggle>
 
-              <Dropdown.Menu>
-                <Link to="/change-password" className={classes.changePassword}>
-                  Change Password
-                </Link>
-                <Dropdown.Divider />
-                <Dropdown.Item
-                  as={"button"}
-                  onClick={logoutHandler}
-                  className={classes.changePassword}
-                >
-                  Logout
-                </Dropdown.Item>
-              </Dropdown.Menu>
-            </Dropdown>
+                <Dropdown.Menu>
+                  <Link
+                    to="/change-password"
+                    className={classes.changePassword}
+                  >
+                    Change Password
+                  </Link>
+
+                  <Dropdown.Divider />
+
+                  <Dropdown.Item
+                    as="button"
+                    onClick={logoutHandler}
+                  >
+                    Logout
+                  </Dropdown.Item>
+                </Dropdown.Menu>
+              </Dropdown>
+            )}
+
           </Nav>
         </Navbar.Collapse>
       </Container>
