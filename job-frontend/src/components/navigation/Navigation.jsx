@@ -14,7 +14,6 @@ const Navigation = () => {
 
   const authToken = localStorage.getItem("token");
 
-  // ✅ Safe decode
   let redAuthToken = null;
   if (authToken) {
     try {
@@ -39,27 +38,36 @@ const Navigation = () => {
   useEffect(() => {
     if (!authToken || !redAuthToken || redAuthToken.role !== "User") return;
 
-    axios
-      .get(`${Config.SERVER_URL}user/notifications`, {
-        headers: {
-          Authorization: "Bearer " + authToken,
-        },
-      })
-      .then((res) => {
-        setNotifications(res.data.notifications || []);
-        const unread =
-          res.data.notifications?.filter((n) => !n.isRead).length || 0;
+    const fetchNotifications = async () => {
+      try {
+        const res = await axios.get(
+          `${Config.SERVER_URL}user/notifications`,
+          {
+            headers: {
+              Authorization: "Bearer " + authToken,
+            },
+          }
+        );
+
+        const notes = res.data.notifications || [];
+        setNotifications(notes);
+
+        const unread = notes.filter((n) => !n.isRead).length;
         setUnreadCount(unread);
-      })
-      .catch((err) => console.log(err));
-  }, [authToken]); // ✅ Correct dependency
+      } catch (err) {
+        console.log(err);
+      }
+    };
+
+    fetchNotifications();
+  }, [authToken, redAuthToken]); // ✅ FIXED
 
   /* =========================
      MARK AS READ
   ========================= */
-  const markAsRead = (id) => {
-    axios
-      .put(
+  const markAsRead = async (id) => {
+    try {
+      await axios.put(
         `${Config.SERVER_URL}user/notifications/${id}`,
         {},
         {
@@ -67,16 +75,18 @@ const Navigation = () => {
             Authorization: "Bearer " + authToken,
           },
         }
-      )
-      .then(() => {
-        setNotifications((prev) =>
-          prev.map((n) =>
-            n._id === id ? { ...n, isRead: true } : n
-          )
-        );
-        setUnreadCount((prev) => (prev > 0 ? prev - 1 : 0));
-      })
-      .catch((err) => console.log(err));
+      );
+
+      setNotifications((prev) =>
+        prev.map((n) =>
+          n._id === id ? { ...n, isRead: true } : n
+        )
+      );
+
+      setUnreadCount((prev) => (prev > 0 ? prev - 1 : 0));
+    } catch (err) {
+      console.log(err);
+    }
   };
 
   return (
@@ -95,7 +105,7 @@ const Navigation = () => {
         <Navbar.Toggle />
         <Navbar.Collapse>
 
-          {/* ================= USER NAV ================= */}
+          {/* USER NAV */}
           {redAuthToken?.role === "User" && (
             <Nav className={`me-auto ${classes.pageLinks}`}>
               <NavLink
@@ -129,7 +139,7 @@ const Navigation = () => {
 
           <Nav className="align-items-center">
 
-            {/* 🔔 NOTIFICATION BELL */}
+            {/* NOTIFICATIONS */}
             {redAuthToken?.role === "User" && (
               <Dropdown align="end" className="me-3">
                 <Dropdown.Toggle
@@ -146,7 +156,7 @@ const Navigation = () => {
                         position: "absolute",
                         top: "-5px",
                         right: "-8px",
-                        fontSize: "10px"
+                        fontSize: "10px",
                       }}
                     >
                       {unreadCount}
@@ -171,7 +181,7 @@ const Navigation = () => {
                           : "#f0f8ff",
                         fontWeight: note.isRead
                           ? "normal"
-                          : "bold"
+                          : "bold",
                       }}
                     >
                       {note.message}
@@ -181,7 +191,7 @@ const Navigation = () => {
               </Dropdown>
             )}
 
-            {/* PROFILE DROPDOWN */}
+            {/* PROFILE */}
             {redAuthToken && (
               <Dropdown align="end" className={classes.dropDown}>
                 <Dropdown.Toggle className={classes.user}>
@@ -198,10 +208,7 @@ const Navigation = () => {
 
                   <Dropdown.Divider />
 
-                  <Dropdown.Item
-                    as="button"
-                    onClick={logoutHandler}
-                  >
+                  <Dropdown.Item as="button" onClick={logoutHandler}>
                     Logout
                   </Dropdown.Item>
                 </Dropdown.Menu>

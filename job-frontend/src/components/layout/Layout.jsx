@@ -1,7 +1,6 @@
 import React from "react";
 import { Container } from "react-bootstrap";
 import { NavLink } from "react-router-dom";
-import classes from "./Layout.module.css";
 import Navigation from "../navigation/Navigation";
 import jwtDecode from "jwt-decode";
 
@@ -10,8 +9,12 @@ const Layout = (props) => {
   let role = null;
 
   if (authToken) {
-    const decoded = jwtDecode(authToken);
-    role = decoded.role;
+    try {
+      const decoded = jwtDecode(authToken);
+      role = decoded.role;
+    } catch (error) {
+      console.error("Invalid token");
+    }
   }
 
   return (
@@ -19,7 +22,6 @@ const Layout = (props) => {
       <Navigation />
 
       <div style={{ display: "flex", marginTop: "70px" }}>
-        
         {/* ===== SIDEBAR (ONLY FOR PROVIDER) ===== */}
         {role === "Job Provider" && (
           <div
