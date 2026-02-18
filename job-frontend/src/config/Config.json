@@ -1,5 +1,5 @@
 {
-  "SERVER_URL": "http://localhost:8080/",
+  "SERVER_URL": "https://careerhunt-53lm.onrender.com/",
   "TITLE": {
     "APP_TITLE": "JOB HUNT",
     "LOGIN": "Login",
