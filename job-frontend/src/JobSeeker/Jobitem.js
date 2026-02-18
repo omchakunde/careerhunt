@@ -1,6 +1,5 @@
 import { Card } from "react-bootstrap";
 import classes from "./Modalf.module.css";
-import Config from "../../config/Config.json";
 
 function Jobitem({ item, jobApply }) {
 
@@ -19,7 +18,7 @@ function Jobitem({ item, jobApply }) {
             <img
               src={
                 item.companyLogo
-                  ? `${Config.SERVER_URL}uploads/${item.companyLogo}`
+                  ? `${process.env.REACT_APP_SERVER_URL}uploads/${item.companyLogo}`
                   : "https://source.unsplash.com/random/200x100?office"
               }
               alt={item.title}
