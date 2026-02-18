@@ -1,5 +1,6 @@
 import { Card } from "react-bootstrap";
 import classes from "./Modalf.module.css";
+import Config from "../../config/Config.json";
 
 function Jobitem({ item, jobApply }) {
 
@@ -18,7 +19,7 @@ function Jobitem({ item, jobApply }) {
             <img
               src={
                 item.companyLogo
-                  ? `http://localhost:8080/uploads/${item.companyLogo}`
+                  ? `${Config.SERVER_URL}uploads/${item.companyLogo}`
                   : "https://source.unsplash.com/random/200x100?office"
               }
               alt={item.title}
@@ -49,7 +50,6 @@ function Jobitem({ item, jobApply }) {
             </span>
           </div>
 
-          {/* Only show Apply button if jobApply exists */}
           {jobApply && (
             <button
               type="button"

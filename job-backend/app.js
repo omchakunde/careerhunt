@@ -22,13 +22,13 @@ const PORT = process.env.PORT || 5000;
 // Parse JSON
 app.use(bodyParser.json());
 
-// 🔥 Serve uploads folder properly (ABSOLUTE PATH)
+// ✅ Serve uploads folder (Production Safe)
 app.use(
   "/uploads",
-  express.static(path.resolve(__dirname, "uploads"))
+  express.static(path.join(__dirname, "uploads"))
 );
 
-// CORS
+// ✅ CORS (Production Safe)
 app.use((req, res, next) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader(
@@ -79,5 +79,5 @@ mongoose
     });
   })
   .catch((err) => {
-    console.log("Database connection error:", err);
+    console.error("Database connection error:", err);
   });
